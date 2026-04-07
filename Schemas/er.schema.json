@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agile.example.com/schemas/er.schema.json",
+  "title": "Modelo Entidad-Relacion",
+  "description": "Estructura JSON para un modelo E-R que genera scripts SQL.",
+  "type": "object",
+  "required": ["entidades"],
+  "properties": {
+    "entidades": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Lista de entidades del modelo E-R.",
+      "items": {
+        "$ref": "#/definitions/Entidad"
+      }
+    },
+    "relaciones": {
+      "type": "array",
+      "description": "Lista de relaciones entre entidades.",
+      "items": {
+        "$ref": "#/definitions/Relacion"
+      },
+      "default": []
+    }
+  },
+  "definitions": {
+    "Entidad": {
+      "type": "object",
+      "required": ["nombre"],
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre de la entidad en PascalCase. Ejemplo: DetallePedido",
+          "pattern": "^[A-Z][a-zA-Z0-9]*$"
+        },
+        "atributos": {
+          "type": "array",
+          "description": "Lista de columnas de la tabla.",
+          "items": {
+            "$ref": "#/definitions/Columna"
+          },
+          "default": []
+        }
+      }
+    },
+    "Columna": {
+      "type": "object",
+      "required": ["nombre"],
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre de la columna en snake_case. Ejemplo: nombre_completo",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "tipo": {
+          "type": "string",
+          "description": "Tipo generico que se mapea segun dialecto SQL. Ejemplo: int, string, boolean, date, datetime, decimal, text",
+          "default": "string"
+        },
+        "esPk": {
+          "type": "boolean",
+          "description": "Si es clave primaria.",
+          "default": false
+        },
+        "esFk": {
+          "type": "boolean",
+          "description": "Si es clave foranea.",
+          "default": false
+        },
+        "referencia": {
+          "type": ["string", "null"],
+          "description": "Referencia de la FK. Formato: 'entidad.columna'. Ejemplo: 'usuario.id'",
+          "default": null
+        },
+        "notNull": {
+          "type": "boolean",
+          "description": "Si el campo no permite NULL.",
+          "default": false
+        },
+        "unique": {
+          "type": "boolean",
+          "description": "Si el campo debe ser unico.",
+          "default": false
+        }
+      }
+    },
+    "Relacion": {
+      "type": "object",
+      "required": ["origen", "destino"],
+      "properties": {
+        "origen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre de la entidad origen (la que tiene la FK)."
+        },
+        "destino": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre de la entidad destino (la referenciada)."
+        },
+        "tipo": {
+          "type": "string",
+          "description": "Tipo de relacion: 1:1, 1:N, N:M",
+          "enum": ["1:1", "1:N", "N:M"],
+          "default": "1:N"
+        }
+      }
+    }
+  }
+}

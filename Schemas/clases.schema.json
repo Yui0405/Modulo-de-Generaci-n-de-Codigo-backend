@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agile.example.com/schemas/clases.schema.json",
+  "title": "Diagrama de Clases",
+  "description": "Estructura JSON para un diagrama de clases UML que genera código Java.",
+  "type": "object",
+  "required": ["clases"],
+  "properties": {
+    "clases": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Lista de clases del diagrama.",
+      "items": {
+        "$ref": "#/definitions/Clase"
+      }
+    }
+  },
+  "definitions": {
+    "Clase": {
+      "type": "object",
+      "required": ["nombre"],
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre de la clase en PascalCase. Ejemplo: DetallePedido",
+          "pattern": "^[A-Z][a-zA-Z0-9]*$"
+        },
+        "atributos": {
+          "type": "array",
+          "description": "Lista de atributos (campos) de la clase.",
+          "items": {
+            "$ref": "#/definitions/Atributo"
+          },
+          "default": []
+        },
+        "metodos": {
+          "type": "array",
+          "description": "Lista de metodos de la clase.",
+          "items": {
+            "$ref": "#/definitions/Metodo"
+          },
+          "default": []
+        },
+        "heredaDe": {
+          "type": ["string", "null"],
+          "description": "Nombre de la clase padre (herencia simple). Null si no hereda.",
+          "default": null
+        },
+        "implementa": {
+          "type": "array",
+          "description": "Lista de interfaces que implementa la clase.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        }
+      }
+    },
+    "Atributo": {
+      "type": "object",
+      "required": ["nombre"],
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre del atributo en camelCase. Ejemplo: nombreCompleto",
+          "pattern": "^[a-z][a-zA-Z0-9]*$"
+        },
+        "tipo": {
+          "type": "string",
+          "description": "Tipo de dato Java. Ejemplo: int, String, boolean, Date, List<String>",
+          "default": "Object"
+        },
+        "esPrivado": {
+          "type": "boolean",
+          "description": "Si el atributo es privado (true) o publico (false).",
+          "default": true
+        }
+      }
+    },
+    "Metodo": {
+      "type": "object",
+      "required": ["nombre"],
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre del metodo en camelCase. Ejemplo: calcularTotal",
+          "pattern": "^[a-z][a-zA-Z0-9]*$"
+        },
+        "tipoRetorno": {
+          "type": "string",
+          "description": "Tipo de retorno del metodo. Ejemplo: void, int, String, List<Producto>",
+          "default": "void"
+        },
+        "parametros": {
+          "type": "array",
+          "description": "Lista de parametros del metodo.",
+          "items": {
+            "$ref": "#/definitions/Parametro"
+          },
+          "default": []
+        }
+      }
+    },
+    "Parametro": {
+      "type": "object",
+      "required": ["nombre", "tipo"],
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre del parametro en camelCase."
+        },
+        "tipo": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Tipo de dato Java del parametro."
+        }
+      }
+    }
+  }
+}

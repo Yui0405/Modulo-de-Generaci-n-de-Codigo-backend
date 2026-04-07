@@ -1,0 +1,18 @@
+{
+  "projectId": "proyecto-test-001",
+  "sourceType": "classDiagram",
+  "modelJson": "{\"clases\": [{\"nombre\": \"Usuario\", \"atributos\": [{\"nombre\": \"id\", \"tipo\": \"Long\", \"esPrivado\": true}, {\"nombre\": \"nombre\", \"tipo\": \"String\", \"esPrivado\": true}, {\"nombre\": \"email\", \"tipo\": \"String\", \"esPrivado\": true}, {\"nombre\": \"password\", \"tipo\": \"String\", \"esPrivado\": true}], \"metodos\": [{\"nombre\": \"getId\", \"tipoRetorno\": \"Long\", \"parametros\": []}, {\"nombre\": \"setNombre\", \"tipoRetorno\": \"void\", \"parametros\": [{\"nombre\": \"nombre\", \"tipo\": \"String\"}]}], \"heredaDe\": null, \"implementa\": []}, {\"nombre\": \"Producto\", \"atributos\": [{\"nombre\": \"id\", \"tipo\": \"Long\", \"esPrivado\": true}, {\"nombre\": \"nombre\", \"tipo\": \"String\", \"esPrivado\": true}, {\"nombre\": \"precio\", \"tipo\": \"BigDecimal\", \"esPrivado\": true}], \"metodos\": [], \"heredaDe\": null, \"implementa\": []}, {\"nombre\": \"Pedido\", \"atributos\": [{\"nombre\": \"id\", \"tipo\": \"Long\", \"esPrivado\": true}, {\"nombre\": \"fecha\", \"tipo\": \"LocalDate\", \"esPrivado\": true}, {\"nombre\": \"total\", \"tipo\": \"BigDecimal\", \"esPrivado\": true}], \"metodos\": [], \"heredaDe\": null, \"implementa\": []}]}",
+  "generationOptions": {
+    "paqueteBase": "com.organizacion.test",
+    "incluirGettersSetters": true,
+    "incluirConstructores": true
+  },
+  "traceabilityOptions": {
+    "incluirComentarios": true,
+    "formatoComentarios": "javadoc"
+  },
+  "outputOptions": {
+    "estructuraPaquetes": true,
+    "incluirTimestamp": true
+  }
+}
