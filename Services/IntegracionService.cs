@@ -44,11 +44,10 @@ public class IntegracionService : IIntegracionService
         // Count generations by ProyectoId
         var totalGeneraciones = await _repositorio.ContarAsync(g => g.ProyectoId == proyectoId);
 
-        // Get last generation ordered by FechaCreacion DESC
-        var generaciones = await _repositorio.BuscarAsync(g => g.ProyectoId == proyectoId);
-        var ultimaGeneracion = generaciones
-            .OrderByDescending(g => g.FechaCreacion)
-            .FirstOrDefault();
+        // Get last generation ordered by FechaCreacion DESC using efficient MongoDB query
+        var ultimaGeneracion = await _repositorio.ObtenerUltimaAsync(
+            g => g.ProyectoId == proyectoId,
+            g => g.FechaCreacion);
 
         // InferEstadoIntegracion
         string estadoIntegracion;

@@ -56,4 +56,14 @@ public class DiagramaRepository : IRepositorio<Diagrama>
         
         return _coleccion.CountDocumentsAsync(filtro);
     }
+
+    public Task<Diagrama?> ObtenerUltimaAsync(
+        System.Linq.Expressions.Expression<Func<Diagrama, bool>> filtro,
+        System.Linq.Expressions.Expression<Func<Diagrama, object>> ordenPorDesc)
+    {
+        return _coleccion.Find(filtro)
+            .SortByDescending(ordenPorDesc)
+            .Limit(1)
+            .FirstOrDefaultAsync();
+    }
 }

@@ -1,31 +1,24 @@
-using System.Security.Cryptography;
-using System.Text;
-
 namespace GeneracionApi.Services.Pipeline.Filters;
 
 /// <summary>
 /// Filtro de registro de auditoría.
 /// 
-/// Es el ÚLTIMO filtro del pipeline. Registra un TraceLog con:
+/// Es el ÚLTIMO filtro del pipeline. Registra metadatos de auditoría:
 /// - ID de la generación
 /// - Tipo de evento (exito o error)
 /// - Detalles (artefactos generados, duración, etc.)
-/// - Firma HMAC-SHA256 para verificar integridad
 /// 
-/// REGLA: TraceLog NUNCA se expone al frontend.
-/// Solo el administrador puede consultar directo en MongoDB.
+/// La trazabilidad real se delega al sistema Core a través de ITrazabilidadClient.
+/// Este filtro solo prepara los metadatos para el servicio de trazabilidad.
+/// 
+/// REGLA: Los logs nunca se exponen al frontend.
+/// Solo el administrador puede consultarlos en el sistema Core.
 /// 
 /// Analogía: es el "notario" que certifica lo que pasó.
 /// Siempre actúa al final, después de que todo ocurrió.
 /// </summary>
 public class RegistroAuditoriaFilter : IFiltroGeneracion
 {
-    /// <summary>
-    /// Clave HMAC para firmar los logs.
-    /// En producción, leer de appsettings.json o variables de entorno.
-    /// </summary>
-    private const string CLAVE_HMAC_DEFAULT = "AGILE-GENERACION-HMAC-KEY-2026";
-
     public string Nombre => "RegistroAuditoria";
 
     public int Orden => 50;
@@ -39,13 +32,13 @@ public class RegistroAuditoriaFilter : IFiltroGeneracion
         var esExitoso = contexto.ErroresValidacion.Count == 0;
         var tipoEvento = esExitoso ? "exito" : "error";
 
-        // Construir detalles
+        // Construir detalles para trazabilidad
         var detalles = esExitoso
             ? $"Generación exitosa. Artefactos: {contexto.Artefactos.Count}. Duración: {duracionMs}ms."
             : $"Generación fallida. Errores: {contexto.ErroresValidacion.Count}. Detalles: {string.Join("; ", contexto.ErroresValidacion.Select(e => $"{e.Campo}: {e.Mensaje}"))}";
 
-        // Crear el TraceLog
-        var traceLog = new Domain.TraceLog
+        // Registrar metadatos de auditoría en el contexto
+        contexto.Metadatos["trazabilidad"] = new
         {
             GeneracionId = contexto.GeneracionId,
             TipoEvento = tipoEvento,
@@ -53,13 +46,6 @@ public class RegistroAuditoriaFilter : IFiltroGeneracion
             FiltroOrigen = Nombre,
             Fecha = fechaFin
         };
-
-        // Calcular y asignar firma HMAC
-        traceLog.FirmaHmac = traceLog.CalcularFirma(CLAVE_HMAC_DEFAULT);
-
-        // Guardar en el contexto
-        contexto.LogTrazabilidad = traceLog;
-        contexto.FechaFin = fechaFin;
 
         // Registrar métricas en metadatos para uso posterior
         contexto.Metadatos["duracionMs"] = duracionMs;
@@ -71,6 +57,8 @@ public class RegistroAuditoriaFilter : IFiltroGeneracion
             "GeneracionArtefactos",
             "RegistroAuditoria"
         };
+
+        contexto.FechaFin = fechaFin;
 
         // Siempre llamamos al siguiente (si hay).
         // Si este es el último filtro, siguiente() no hace nada.

@@ -1,5 +1,6 @@
 using GeneracionApi.Config;
 using GeneracionApi.Domain;
+using GeneracionApi.Extensions;
 using GeneracionApi.Repositories;
 using GeneracionApi.Services;
 using GeneracionApi.Services.Pipeline;
@@ -27,6 +28,12 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
 });
 
 // ──────────────────────────────────────────────
+// Configuración de Core API
+// ──────────────────────────────────────────────
+builder.Services.Configure<CoreApiSettings>(
+    builder.Configuration.GetSection("CoreApiSettings"));
+
+// ──────────────────────────────────────────────
 // Controllers
 // ──────────────────────────────────────────────
 builder.Services.AddControllers();
@@ -51,7 +58,11 @@ builder.Services.AddScoped<IRepositorio<Generacion>, GeneracionRepository>();
 builder.Services.AddScoped<IRepositorio<Diagrama>, DiagramaRepository>();
 builder.Services.AddScoped<IRepositorio<ConfigGeneracion>, ConfigGeneracionRepository>();
 builder.Services.AddScoped<IRepositorio<ArtefactoGenerado>, ArtefactoRepository>();
-builder.Services.AddScoped<IRepositorio<TraceLog>, LogRepository>();
+
+// ──────────────────────────────────────────────
+// Core Clients (Pluggable)
+// ──────────────────────────────────────────────
+builder.Services.AddCoreClients();
 
 // ──────────────────────────────────────────────
 // Pipeline Filters

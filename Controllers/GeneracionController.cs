@@ -70,42 +70,21 @@ public class GeneracionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GenerarAsync([FromBody] GeneracionRequestDto request)
     {
-        try
+        if (request == null)
         {
-            if (request == null)
+            return BadRequest(new { message = "El cuerpo de la solicitud no puede ser nulo." });
+        }
+
+        return await EjecutarAsync(
+            async () =>
             {
-                return BadRequest(new { message = "El cuerpo de la solicitud no puede ser nulo." });
-            }
-
-            _logger.LogInformation("Iniciando generación para proyecto {ProyectoId}", request.ProjectId);
-
-            var resultado = await _generacionService.GenerarAsync(request);
-
-            _logger.LogInformation("Generación {GeneracionId} completada con estado {Estado}",
-                resultado.GeneracionId, resultado.Estado);
-
-            return CreatedAtAction(nameof(ObtenerPorIdAsync), new { generacionId = resultado.GeneracionId }, resultado);
-        }
-        catch (GeneracionException ex)
-        {
-            _logger.LogWarning(ex, "Errores de validación en generación");
-            return BuildValidationProblemResponse(ex.Errores);
-        }
-        catch (ArgumentNullException ex)
-        {
-            _logger.LogWarning(ex, "Argumento nulo en generación");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Argumento inválido en generación");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error inesperado en generación");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+                _logger.LogInformation("Iniciando generación para proyecto {ProyectoId}", request.ProjectId);
+                var resultado = await _generacionService.GenerarAsync(request);
+                _logger.LogInformation("Generación {GeneracionId} completada con estado {Estado}",
+                    resultado.GeneracionId, resultado.Estado);
+                return resultado;
+            },
+            resultado => CreatedAtAction(nameof(ObtenerPorIdAsync), new { generacionId = resultado.GeneracionId }, resultado));
     }
 
     /// <summary>
@@ -122,38 +101,22 @@ public class GeneracionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ObtenerPorIdAsync(string generacionId)
     {
-        try
+        if (string.IsNullOrWhiteSpace(generacionId))
         {
-            if (string.IsNullOrWhiteSpace(generacionId))
+            return BadRequest(new { message = "El ID de generación no puede estar vacío." });
+        }
+
+        return await EjecutarAsync(
+            async () => await _generacionService.ObtenerPorIdAsync(generacionId),
+            resultado =>
             {
-                return BadRequest(new { message = "El ID de generación no puede estar vacío." });
-            }
-
-            var resultado = await _generacionService.ObtenerPorIdAsync(generacionId);
-
-            if (resultado == null)
-            {
-                _logger.LogWarning("Generación {GeneracionId} no encontrada", generacionId);
-                return NotFound(new { message = $"No se encontró la generación con ID: {generacionId}" });
-            }
-
-            return Ok(resultado);
-        }
-        catch (ArgumentNullException ex)
-        {
-            _logger.LogWarning(ex, "Argumento nulo al obtener generación");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Argumento inválido al obtener generación");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error inesperado al obtener generación {GeneracionId}", generacionId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+                if (resultado == null)
+                {
+                    _logger.LogWarning("Generación {GeneracionId} no encontrada", generacionId);
+                    return NotFound(new { message = $"No se encontró la generación con ID: {generacionId}" });
+                }
+                return Ok(resultado);
+            });
     }
 
     /// <summary>
@@ -171,43 +134,27 @@ public class GeneracionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ObtenerArchivoAsync(string generacionId, [FromQuery] string ruta)
     {
-        try
+        if (string.IsNullOrWhiteSpace(generacionId))
         {
-            if (string.IsNullOrWhiteSpace(generacionId))
+            return BadRequest(new { message = "El ID de generación no puede estar vacío." });
+        }
+
+        if (string.IsNullOrWhiteSpace(ruta))
+        {
+            return BadRequest(new { message = "La ruta del archivo no puede estar vacía." });
+        }
+
+        return await EjecutarAsync(
+            async () => await _generacionService.ObtenerArchivoAsync(generacionId, ruta),
+            contenido =>
             {
-                return BadRequest(new { message = "El ID de generación no puede estar vacío." });
-            }
-
-            if (string.IsNullOrWhiteSpace(ruta))
-            {
-                return BadRequest(new { message = "La ruta del archivo no puede estar vacía." });
-            }
-
-            var contenido = await _generacionService.ObtenerArchivoAsync(generacionId, ruta);
-
-            if (contenido == null)
-            {
-                _logger.LogWarning("Archivo {Ruta} no encontrado en generación {GeneracionId}", ruta, generacionId);
-                return NotFound(new { message = $"No se encontró el archivo '{ruta}' en la generación '{generacionId}'" });
-            }
-
-            return Ok(contenido);
-        }
-        catch (ArgumentNullException ex)
-        {
-            _logger.LogWarning(ex, "Argumento nulo al obtener archivo");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Argumento inválido al obtener archivo");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error inesperado al obtener archivo {Ruta} de generación {GeneracionId}", ruta, generacionId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+                if (contenido == null)
+                {
+                    _logger.LogWarning("Archivo {Ruta} no encontrado en generación {GeneracionId}", ruta, generacionId);
+                    return NotFound(new { message = $"No se encontró el archivo '{ruta}' en la generación '{generacionId}'" });
+                }
+                return Ok(contenido);
+            });
     }
 
     /// <summary>
@@ -225,40 +172,23 @@ public class GeneracionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DescargarZipAsync(string generacionId)
     {
-        try
+        if (string.IsNullOrWhiteSpace(generacionId))
         {
-            if (string.IsNullOrWhiteSpace(generacionId))
+            return BadRequest(new { message = "El ID de generación no puede estar vacío." });
+        }
+
+        return await EjecutarAsync(
+            async () => await _generacionService.DescargarZipAsync(generacionId),
+            zipBytes =>
             {
-                return BadRequest(new { message = "El ID de generación no puede estar vacío." });
-            }
-
-            var zipBytes = await _generacionService.DescargarZipAsync(generacionId);
-
-            if (zipBytes == null)
-            {
-                _logger.LogWarning("Generación {GeneracionId} no encontrada para descarga", generacionId);
-                return NotFound(new { message = $"No se encontró la generación con ID: {generacionId}" });
-            }
-
-            _logger.LogInformation("Generando descarga ZIP para generación {GeneracionId}", generacionId);
-
-            return File(zipBytes, "application/zip", $"generacion-{generacionId}.zip");
-        }
-        catch (ArgumentNullException ex)
-        {
-            _logger.LogWarning(ex, "Argumento nulo al descargar ZIP");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Argumento inválido al descargar ZIP");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error inesperado al descargar ZIP para generación {GeneracionId}", generacionId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+                if (zipBytes == null)
+                {
+                    _logger.LogWarning("Generación {GeneracionId} no encontrada para descarga", generacionId);
+                    return NotFound(new { message = $"No se encontró la generación con ID: {generacionId}" });
+                }
+                _logger.LogInformation("Generando descarga ZIP para generación {GeneracionId}", generacionId);
+                return File(zipBytes, "application/zip", $"generacion-{generacionId}.zip");
+            });
     }
 
     /// <summary>
@@ -276,48 +206,29 @@ public class GeneracionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> RegenerarAsync(string generacionId)
     {
-        try
+        if (string.IsNullOrWhiteSpace(generacionId))
         {
-            if (string.IsNullOrWhiteSpace(generacionId))
+            return BadRequest(new { message = "El ID de generación no puede estar vacío." });
+        }
+
+        return await EjecutarAsync(
+            async () =>
             {
-                return BadRequest(new { message = "El ID de generación no puede estar vacío." });
-            }
-
-            _logger.LogInformation("Iniciando regeneración de generación {GeneracionId}", generacionId);
-
-            var resultado = await _generacionService.RegenerarAsync(generacionId);
-
-            if (resultado == null)
+                _logger.LogInformation("Iniciando regeneración de generación {GeneracionId}", generacionId);
+                var resultado = await _generacionService.RegenerarAsync(generacionId);
+                _logger.LogInformation("Regeneración {NuevaGeneracionId} completada desde generación padre {GeneracionId}",
+                    resultado.GeneracionId, generacionId);
+                return resultado;
+            },
+            resultado =>
             {
-                _logger.LogWarning("Generación {GeneracionId} no encontrada para regeneración", generacionId);
-                return NotFound(new { message = $"No se encontró la generación con ID: {generacionId}" });
-            }
-
-            _logger.LogInformation("Regeneración {NuevaGeneracionId} completada desde generación padre {GeneracionId}",
-                resultado.GeneracionId, generacionId);
-
-            return CreatedAtAction(nameof(ObtenerPorIdAsync), new { generacionId = resultado.GeneracionId }, resultado);
-        }
-        catch (GeneracionException ex)
-        {
-            _logger.LogWarning(ex, "Errores de validación en regeneración");
-            return BuildValidationProblemResponse(ex.Errores);
-        }
-        catch (ArgumentNullException ex)
-        {
-            _logger.LogWarning(ex, "Argumento nulo en regeneración");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Argumento inválido en regeneración");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error inesperado en regeneración de generación {GeneracionId}", generacionId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+                if (resultado == null)
+                {
+                    _logger.LogWarning("Generación {GeneracionId} no encontrada para regeneración", generacionId);
+                    return NotFound(new { message = $"No se encontró la generación con ID: {generacionId}" });
+                }
+                return CreatedAtAction(nameof(ObtenerPorIdAsync), new { generacionId = resultado.GeneracionId }, resultado);
+            });
     }
 
     /// <summary>
@@ -333,34 +244,18 @@ public class GeneracionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ConsultarIntegracionAsync(string proyectoId)
     {
-        try
+        if (string.IsNullOrWhiteSpace(proyectoId))
         {
-            if (string.IsNullOrWhiteSpace(proyectoId))
+            return BadRequest(new { message = "El ID del proyecto no puede estar vacío." });
+        }
+
+        return await EjecutarAsync(
+            async () =>
             {
-                return BadRequest(new { message = "El ID del proyecto no puede estar vacío." });
-            }
-
-            _logger.LogInformation("Consultando integración para proyecto {ProyectoId}", proyectoId);
-
-            var resultado = await _integracionService.ConsultarAsync(proyectoId);
-
-            return Ok(resultado);
-        }
-        catch (ArgumentNullException ex)
-        {
-            _logger.LogWarning(ex, "Argumento nulo al consultar integración");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Argumento inválido al consultar integración");
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error inesperado al consultar integración para proyecto {ProyectoId}", proyectoId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+                _logger.LogInformation("Consultando integración para proyecto {ProyectoId}", proyectoId);
+                return await _integracionService.ConsultarAsync(proyectoId);
+            },
+            resultado => Ok(resultado));
     }
 
     /// <summary>
@@ -376,5 +271,43 @@ public class GeneracionController : ControllerBase
         }
 
         return ValidationProblem(ModelState);
+    }
+
+    /// <summary>
+    /// Ejecuta una acción con manejo de errores centralizado.
+    /// </summary>
+    /// <typeparam name="T">Tipo de resultado exitoso.</typeparam>
+    /// <param name="action">Acción a ejecutar que retorna el resultado.</param>
+    /// <param name="onSuccess">Función para transformar el resultado en IActionResult.</param>
+    /// <returns>IActionResult con el resultado o error apropiado.</returns>
+    private async Task<IActionResult> EjecutarAsync<T>(
+        Func<Task<T>> action,
+        Func<T, IActionResult> onSuccess)
+    {
+        try
+        {
+            var resultado = await action();
+            return onSuccess(resultado);
+        }
+        catch (GeneracionException ex)
+        {
+            _logger.LogWarning(ex, "Errores de validación en operación");
+            return BuildValidationProblemResponse(ex.Errores);
+        }
+        catch (ArgumentNullException ex)
+        {
+            _logger.LogWarning(ex, "Argumento nulo en operación");
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Argumento inválido en operación");
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inesperado en operación");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+        }
     }
 }

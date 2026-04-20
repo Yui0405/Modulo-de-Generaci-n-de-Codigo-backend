@@ -157,77 +157,13 @@ public class GeneracionService : IGeneracionService
             GeneracionId = generacion.Id!
         };
 
-        // Register "inicio" event via ITrazabilidadService
-        await _trazabilidadService.RegistrarEventoAsync(
-            generacion.Id!,
-            "inicio",
+        // Execute pipeline via extracted method
+        var (response, _) = await EjecutarPipelineAsync(
+            contexto,
+            generacion,
             $"Iniciada generación tipo {request.SourceType} para proyecto {request.ProjectId}");
 
-        // Execute pipeline
-        try
-        {
-            _logger.LogInformation("Ejecutando pipeline para generación {GeneracionId}", generacion.Id);
-            await _pipeline.EjecutarAsync(contexto);
-
-            // On success: Update Generacion
-            generacion.Estado = "exito";
-            generacion.FechaFin = DateTime.UtcNow;
-            generacion.CantidadArtefactos = contexto.Artefactos.Count;
-            await _repositorioGeneracion.ActualizarAsync(generacion.Id!, generacion);
-
-            // Persist each ArtefactoGenerado
-            foreach (var artefacto in contexto.Artefactos)
-            {
-                artefacto.GeneracionId = generacion.Id!;
-                await _repositorioArtefacto.InsertarAsync(artefacto);
-            }
-
-            // Register "exito" event
-            await _trazabilidadService.RegistrarEventoAsync(
-                generacion.Id!,
-                "exito",
-                $"Generación exitosa. {contexto.Artefactos.Count} artefactos generados.");
-
-            _logger.LogInformation("Generación {GeneracionId} completada exitosamente con {Cantidad} artefactos",
-                generacion.Id, contexto.Artefactos.Count);
-
-            // Return response
-            return MapToResponseDto(generacion, contexto.Artefactos, contexto.FechaInicio);
-        }
-        catch (GeneracionException ex)
-        {
-            // On error: Update Generacion
-            generacion.Estado = "error";
-            generacion.MensajeError = ex.Message;
-            generacion.FechaFin = DateTime.UtcNow;
-            await _repositorioGeneracion.ActualizarAsync(generacion.Id!, generacion);
-
-            // Register "error" event
-            await _trazabilidadService.RegistrarEventoAsync(
-                generacion.Id!,
-                "error",
-                $"Error en generación: {ex.Message}");
-
-            _logger.LogError(ex, "Error en generación {GeneracionId}: {Mensaje}", generacion.Id, ex.Message);
-
-            // Return response with error
-            return new GeneracionResponseDto
-            {
-                GeneracionId = generacion.Id!,
-                ProyectoId = generacion.ProyectoId,
-                SourceType = generacion.SourceType,
-                Estado = "error",
-                Errores = new List<ValidacionErrorDto>
-                {
-                    new ValidacionErrorDto
-                    {
-                        Campo = "pipeline",
-                        Mensaje = ex.Message
-                    }
-                },
-                FechaGeneracion = generacion.FechaCreacion
-            };
-        }
+        return response;
     }
 
     /// <inheritdoc/>
@@ -388,66 +324,92 @@ public class GeneracionService : IGeneracionService
             GeneracionId = nuevaGeneracion.Id!
         };
 
+        // Execute pipeline via extracted method
+        var (response, _) = await EjecutarPipelineAsync(
+            contexto,
+            nuevaGeneracion,
+            $"Regeneración de generación {generacionOriginal.Id}, tipo {generacionOriginal.SourceType}");
+
+        // Set GeneracionPadreId in response if successful
+        if (response.GeneracionPadreId == null)
+        {
+            response.GeneracionPadreId = generacionOriginal.Id;
+        }
+
+        return response;
+    }
+
+    /// <summary>
+    /// Ejecuta el pipeline de generación y maneja el resultado.
+    /// Método extraído para eliminar duplicación entre GenerarAsync y RegenerarAsync.
+    /// </summary>
+    /// <param name="contexto">Contexto de generación con Diagrama y Configuración.</param>
+    /// <param name="generacion">Entidad de generación a actualizar.</param>
+    /// <param name="mensajeInicio">Mensaje para el evento de inicio.</param>
+    /// <returns>Tupla con DTO de respuesta y lista de artefactos generados.</returns>
+    private async Task<(GeneracionResponseDto Response, List<ArtefactoGenerado> Artefactos)>
+        EjecutarPipelineAsync(ContextoGeneracion contexto, Generacion generacion, string mensajeInicio)
+    {
         // Register "inicio" event
         await _trazabilidadService.RegistrarEventoAsync(
-            nuevaGeneracion.Id!,
+            generacion.Id!,
             "inicio",
-            $"Regeneración de generación {generacionOriginal.Id}, tipo {generacionOriginal.SourceType}");
+            mensajeInicio);
 
         // Execute pipeline
         try
         {
-            _logger.LogInformation("Ejecutando pipeline para regeneración {GeneracionId}", nuevaGeneracion.Id);
+            _logger.LogInformation("Ejecutando pipeline para generación {GeneracionId}", generacion.Id);
             await _pipeline.EjecutarAsync(contexto);
 
-            // On success: update as in GenerarAsync
-            nuevaGeneracion.Estado = "exito";
-            nuevaGeneracion.FechaFin = DateTime.UtcNow;
-            nuevaGeneracion.CantidadArtefactos = contexto.Artefactos.Count;
-            await _repositorioGeneracion.ActualizarAsync(nuevaGeneracion.Id!, nuevaGeneracion);
+            // On success: Update Generacion
+            generacion.Estado = "exito";
+            generacion.FechaFin = DateTime.UtcNow;
+            generacion.CantidadArtefactos = contexto.Artefactos.Count;
+            await _repositorioGeneracion.ActualizarAsync(generacion.Id!, generacion);
 
             // Persist each ArtefactoGenerado
             foreach (var artefacto in contexto.Artefactos)
             {
-                artefacto.GeneracionId = nuevaGeneracion.Id!;
+                artefacto.GeneracionId = generacion.Id!;
                 await _repositorioArtefacto.InsertarAsync(artefacto);
             }
 
             // Register "exito" event
             await _trazabilidadService.RegistrarEventoAsync(
-                nuevaGeneracion.Id!,
+                generacion.Id!,
                 "exito",
-                $"Regeneración exitosa. {contexto.Artefactos.Count} artefactos generados.");
+                $"Generación exitosa. {contexto.Artefactos.Count} artefactos generados.");
 
-            _logger.LogInformation("Regeneración {GeneracionId} completada exitosamente", nuevaGeneracion.Id);
+            _logger.LogInformation("Generación {GeneracionId} completada exitosamente con {Cantidad} artefactos",
+                generacion.Id, contexto.Artefactos.Count);
 
-            // Return new GeneracionResponseDto with GeneracionPadreId
-            return MapToResponseDto(nuevaGeneracion, contexto.Artefactos, nuevaGeneracion.FechaCreacion);
+            // Return response
+            return (MapToResponseDto(generacion, contexto.Artefactos, contexto.FechaInicio), contexto.Artefactos);
         }
         catch (GeneracionException ex)
         {
-            // On error: update as in GenerarAsync
-            nuevaGeneracion.Estado = "error";
-            nuevaGeneracion.MensajeError = ex.Message;
-            nuevaGeneracion.FechaFin = DateTime.UtcNow;
-            await _repositorioGeneracion.ActualizarAsync(nuevaGeneracion.Id!, nuevaGeneracion);
+            // On error: Update Generacion
+            generacion.Estado = "error";
+            generacion.MensajeError = ex.Message;
+            generacion.FechaFin = DateTime.UtcNow;
+            await _repositorioGeneracion.ActualizarAsync(generacion.Id!, generacion);
 
             // Register "error" event
             await _trazabilidadService.RegistrarEventoAsync(
-                nuevaGeneracion.Id!,
+                generacion.Id!,
                 "error",
-                $"Error en regeneración: {ex.Message}");
+                $"Error en generación: {ex.Message}");
 
-            _logger.LogError(ex, "Error en regeneración {GeneracionId}: {Mensaje}", nuevaGeneracion.Id, ex.Message);
+            _logger.LogError(ex, "Error en generación {GeneracionId}: {Mensaje}", generacion.Id, ex.Message);
 
             // Return response with error
-            return new GeneracionResponseDto
+            var errorResponse = new GeneracionResponseDto
             {
-                GeneracionId = nuevaGeneracion.Id!,
-                ProyectoId = nuevaGeneracion.ProyectoId,
-                SourceType = nuevaGeneracion.SourceType,
+                GeneracionId = generacion.Id!,
+                ProyectoId = generacion.ProyectoId,
+                SourceType = generacion.SourceType,
                 Estado = "error",
-                GeneracionPadreId = generacionOriginal.Id,
                 Errores = new List<ValidacionErrorDto>
                 {
                     new ValidacionErrorDto
@@ -456,8 +418,10 @@ public class GeneracionService : IGeneracionService
                         Mensaje = ex.Message
                     }
                 },
-                FechaGeneracion = nuevaGeneracion.FechaCreacion
+                FechaGeneracion = generacion.FechaCreacion
             };
+
+            return (errorResponse, new List<ArtefactoGenerado>());
         }
     }
 

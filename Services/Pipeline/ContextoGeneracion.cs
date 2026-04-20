@@ -52,11 +52,6 @@ public class ContextoGeneracion
     public List<ValidationError> ErroresValidacion { get; } = new();
 
     /// <summary>
-    /// Registro de trazabilidad para auditoría.
-    /// </summary>
-    public TraceLog? LogTrazabilidad { get; set; }
-
-    /// <summary>
     /// Fecha/hora de inicio del pipeline.
     /// </summary>
     public DateTime FechaInicio { get; init; } = DateTime.UtcNow;

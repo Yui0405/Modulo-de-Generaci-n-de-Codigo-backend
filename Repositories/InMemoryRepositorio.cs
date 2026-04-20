@@ -138,6 +138,28 @@ public class InMemoryRepositorio<T> : IRepositorio<T> where T : class
         }
     }
 
+    public Task<T?> ObtenerUltimaAsync(
+        Expression<Func<T, bool>> filtro,
+        Expression<Func<T, object>> ordenPorDesc)
+    {
+        if (filtro == null)
+            return Task.FromResult<T?>(null);
+
+        var predicado = filtro.Compile();
+        var ordenSelector = ordenPorDesc.Compile();
+
+        lock (_lock)
+        {
+            var resultados = _almacen.Values
+                .Where(predicado)
+                .OrderByDescending(ordenSelector)
+                .Take(1)
+                .ToList();
+
+            return Task.FromResult(resultados.FirstOrDefault());
+        }
+    }
+
     private string? ObtenerId(T entidad)
     {
         if (_propiedadId == null)

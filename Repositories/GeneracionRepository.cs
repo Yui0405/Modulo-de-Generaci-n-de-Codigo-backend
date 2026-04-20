@@ -56,4 +56,14 @@ public class GeneracionRepository : IRepositorio<Generacion>
         
         return _coleccion.CountDocumentsAsync(filtro);
     }
+
+public Task<Generacion?> ObtenerUltimaAsync(
+        System.Linq.Expressions.Expression<Func<Generacion, bool>> filtro,
+        System.Linq.Expressions.Expression<Func<Generacion, object>> ordenPorDesc)
+    {
+        return _coleccion.Find(filtro)
+            .SortByDescending(ordenPorDesc)
+            .Limit(1)
+            .FirstOrDefaultAsync();
+    }
 }

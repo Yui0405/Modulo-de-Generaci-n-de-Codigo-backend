@@ -65,4 +65,16 @@ public interface IRepositorio<T> where T : class
     /// <param name="filtro">Expresión de filtro (opcional, null = contar todo).</param>
     /// <returns>Número de entidades.</returns>
     Task<long> ContarAsync(System.Linq.Expressions.Expression<Func<T, bool>>? filtro = null);
+
+    /// <summary>
+    /// Obtiene la entidad ordenada descendentemente por el campo especificado.
+    /// Útil para obtener el último registro según un criterio de ordenamiento.
+    /// </summary>
+    /// <param name="filtro">Expresión de filtro para buscar entidades.</param>
+    /// <param name="ordenPorDesc">Expresión de ordenamiento descendente.
+    /// Ejemplo: g => g.FechaCreacion</param>
+    /// <returns>La primera entidad ordenada descendentemente o null si no hay resultados.</returns>
+    Task<T?> ObtenerUltimaAsync(
+        System.Linq.Expressions.Expression<Func<T, bool>> filtro,
+        System.Linq.Expressions.Expression<Func<T, object>> ordenPorDesc);
 }

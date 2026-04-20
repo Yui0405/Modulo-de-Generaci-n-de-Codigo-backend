@@ -56,4 +56,14 @@ public class ArtefactoRepository : IRepositorio<ArtefactoGenerado>
         
         return _coleccion.CountDocumentsAsync(filtro);
     }
+
+    public Task<ArtefactoGenerado?> ObtenerUltimaAsync(
+        System.Linq.Expressions.Expression<Func<ArtefactoGenerado, bool>> filtro,
+        System.Linq.Expressions.Expression<Func<ArtefactoGenerado, object>> ordenPorDesc)
+    {
+        return _coleccion.Find(filtro)
+            .SortByDescending(ordenPorDesc)
+            .Limit(1)
+            .FirstOrDefaultAsync();
+    }
 }

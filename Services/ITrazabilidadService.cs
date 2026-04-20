@@ -3,9 +3,9 @@ namespace GeneracionApi.Services;
 /// <summary>
 /// Contrato para el servicio de trazabilidad y auditoría.
 /// 
-/// Registra quién hizo qué, cuándo y con qué resultado.
-/// Los logs nunca se exponen al frontend — solo el administrador
-/// puede consultarlos directamente en MongoDB.
+/// Delega el registro de eventos al sistema Core a través de ITrazabilidadClient.
+/// Los logs nunca se exponen al frontend — solo el administrador puede consultarlos
+/// en el sistema Core.
 /// </summary>
 public interface ITrazabilidadService
 {

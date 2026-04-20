@@ -1,29 +1,23 @@
+using GeneracionApi.Clients;
 using GeneracionApi.Domain;
-using GeneracionApi.Repositories;
 
 namespace GeneracionApi.Services;
 
 /// <summary>
 /// Servicio de trazabilidad y auditoría.
 ///
-/// Gestiona el registro de eventos del pipeline de generación.
-/// Implementa registro inmutable con verificación HMAC.
+/// Delega el registro de eventos al sistema Core a través de ITrazabilidadClient.
+/// Este servicio actúa como adapter entre la aplicación y el sistema externo de trazabilidad.
 ///
-/// REGLA: TraceLog NUNCA se expone al frontend.
-/// Solo el administrador puede consultarlo directamente en MongoDB.
+/// REGLA: Los logs nunca se exponen al frontend.
+/// Solo el administrador puede consultarlos directamente en el sistema Core.
 ///
 /// Dependencias:
-/// - IRepositorio&lt;TraceLog&gt;: persistencia de logs en MongoDB
+/// - ITrazabilidadClient: cliente HTTP para el sistema Core
 /// - ILogger&lt;TrazabilidadService&gt;: logging de operaciones
 /// </summary>
 public class TrazabilidadService : ITrazabilidadService
 {
-    /// <summary>
-    /// Clave HMAC para firmar los registros de trazabilidad.
-    /// En producción, leer de appsettings.json o variables de entorno.
-    /// </summary>
-    private const string CLAVE_HMAC = "AGILE-GENERACION-HMAC-KEY-2026";
-
     /// <summary>
     /// Tipos de evento válidos para el registro de trazabilidad.
     /// </summary>
@@ -37,24 +31,25 @@ public class TrazabilidadService : ITrazabilidadService
         "error"
     };
 
-    private readonly IRepositorio<TraceLog> _repositorio;
+    private readonly ITrazabilidadClient _trazabilidadClient;
     private readonly ILogger<TrazabilidadService> _logger;
 
     /// <summary>
     /// Constructor con inyección de dependencias.
     /// </summary>
-    /// <param name="repositorio">Repositorio para persistencia de TraceLog.</param>
+    /// <param name="trazabilidadClient">Cliente para el servicio de trazabilidad de Core.</param>
     /// <param name="logger">Logger para trazabilidad del servicio.</param>
     public TrazabilidadService(
-        IRepositorio<TraceLog> repositorio,
+        ITrazabilidadClient trazabilidadClient,
         ILogger<TrazabilidadService> logger)
     {
-        _repositorio = repositorio ?? throw new ArgumentNullException(nameof(repositorio));
+        _trazabilidadClient = trazabilidadClient ?? throw new ArgumentNullException(nameof(trazabilidadClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
     /// Registra un evento en el historial de trazabilidad.
+    /// Delega al sistema Core a través de ITrazabilidadClient.
     /// </summary>
     /// <param name="generacionId">ID de la generación asociada.</param>
     /// <param name="tipoEvento">Tipo de evento: "inicio", "validacion", "transformacion", "generacion", "exito", "error".</param>
@@ -83,28 +78,17 @@ public class TrazabilidadService : ITrazabilidadService
                 nameof(tipoEvento));
         }
 
-        // Crear la entidad TraceLog
-        var traceLog = new TraceLog
-        {
-            GeneracionId = generacionId,
-            TipoEvento = tipoEvento,
-            Detalles = detalles ?? string.Empty,
-            Fecha = DateTime.UtcNow
-        };
-
-        // Calcular la firma HMAC
-        traceLog.FirmaHmac = traceLog.CalcularFirma(CLAVE_HMAC);
-
-        // Persistir en MongoDB
-        await _repositorio.InsertarAsync(traceLog);
+        // Delegar al cliente de Core
+        await _trazabilidadClient.RegistrarEventoAsync(generacionId, tipoEvento, detalles ?? string.Empty);
 
         // Log de la operación
-        _logger.LogInformation("Evento {TipoEvento} registrado para generación {GeneracionId}", 
+        _logger.LogInformation("Evento {TipoEvento} registrado para generación {GeneracionId} via Core",
             tipoEvento, generacionId);
     }
 
     /// <summary>
     /// Obtiene el historial de eventos de una generación ordenados cronológicamente.
+    /// Delega al sistema Core a través de ITrazabilidadClient.
     /// </summary>
     /// <param name="generacionId">ID de la generación.</param>
     /// <returns>Lista de eventos ordenada por fecha ascendente. Empty si no hay eventos.</returns>
@@ -117,13 +101,9 @@ public class TrazabilidadService : ITrazabilidadService
             throw new ArgumentException("El ID de generación no puede estar vacío.", nameof(generacionId));
         }
 
-        // Buscar todos los logs relacionados con la generación
-        var logs = await _repositorio.BuscarAsync(log => log.GeneracionId == generacionId);
+        // Delegar al cliente de Core
+        var historial = await _trazabilidadClient.ObtenerHistorialAsync(generacionId);
 
-        // Ordenar por fecha ascendente (cronológico)
-        var logsOrdenados = logs.OrderBy(log => log.Fecha).ToList();
-
-        // Retornar como lista de objetos (casting explícito)
-        return logsOrdenados.Cast<object>().ToList();
+        return historial;
     }
 }
